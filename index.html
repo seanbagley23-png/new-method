@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -104,14 +106,17 @@ const BS_OHLC="https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=15";
 const CF="https://www.cfbenchmarks.com/api/v1/values?id=BRTI";
 const SERIES="KXBTC15M", TV_SYM="COINBASE:BTCUSD";
 
+
 let S=null, pos=localStorage.getItem('pos')||'NONE', tvBuilt=false;
 let flip={prev:null,text:'Starting…',t:Date.now()/1000};
 let locks={}, lockWin=null, health={};
+
 
 function setPos(v){pos=v;localStorage.setItem('pos',v);
   $('pNone').className=v==='NONE'?'on':'';$('pUp').className=v==='UP'?'on':'';$('pDn').className=v==='DOWN'?'on':'';render();}
 $('pNone').onclick=()=>setPos('NONE');$('pUp').onclick=()=>setPos('UP');$('pDn').onclick=()=>setPos('DOWN');
 setPos(pos);
+
 
 async function one(url,ms){
   const ctl=new AbortController();const to=setTimeout(()=>ctl.abort(),ms);
@@ -130,6 +135,7 @@ async function gj(url,name,ms=5000){
 const parseTs=s=>{const t=Date.parse(s);return isNaN(t)?null:t/1000;};
 const px=(m,k)=>{const v=m[k+'_dollars'];if(v!==undefined&&v!==null&&v!=='')return parseFloat(v);
   const c=m[k];return(c===undefined||c===null)?null:c/100;};
+
 
 async function getSpot(){
   let d=await gj(KALSHI+"/cfbenchmarks/values?id=BRTI","Kalshi BRTI");
@@ -169,6 +175,7 @@ async function getMarket(){
   return v[0]||null;
 }
 
+
 function evaluate(m,c,now){
   const close=parseTs(m.close_time), left=Math.max(0.1,(close-now)/60);
   const spot=c[c.length-1].c, ref=parseFloat(m.floor_strike);
@@ -197,6 +204,7 @@ function evaluate(m,c,now){
   return{checks,pass,side,ask,bid,spot,ref,close,wm,label:side==='yes'?'UP':'DOWN'};
 }
 
+
 async function tick(){
   const now=Date.now()/1000;
   const[[spot,src],c0,mk]=await Promise.all([getSpot(),getCandles(),getMarket()]);
@@ -211,12 +219,10 @@ async function tick(){
     S={err:true,spot,src,c,health:{...health},updated:now};render();return;
   }
   const d=evaluate(m,c,now);
-  // flip tracking with From -> To display
   if(flip.prev===null){flip.prev=d.label;flip.text=`Stable (${d.label})`;}
   else if(flip.prev!==d.label){flip.text=`Flipped: ${flip.prev} → ${d.label}`;flip.prev=d.label;flip.t=now;}
   else if(now-flip.t>45)flip.text=`Stable (${d.label})`;
   
-  // milestone locks
   if(lockWin!==m.ticker){locks={};lockWin=m.ticker;}
   const start=d.close-900;
   [[13,120],[10,300],[7,480],[3,720]].forEach(([k,off])=>{
@@ -236,10 +242,12 @@ async function tick(){
   render();
 }
 
+
 function status(){
   const h=Object.entries(health).map(([k,v])=>`<span class="${v?'':'bad'}">${k}: ${v===false?'blocked':v}</span>`).join(' · ');
   $('status').innerHTML=(h||'Connecting…');
 }
+
 
 function render(){
   if(!S){status();return;}
@@ -278,6 +286,7 @@ function render(){
   drawChart();
 }
 
+
 function drawChart(){
   if(!S||!S.c||$('cv').style.display==='none')return;
   const cv=$('cv'),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;if(!W)return;
@@ -295,6 +304,7 @@ function drawChart(){
   if(ref){g.strokeStyle=g.fillStyle='#ffb300';g.setLineDash([4,3]);g.beginPath();g.moveTo(L,y(ref));g.lineTo(W-R,y(ref));g.stroke();g.setLineDash([]);g.fillText('strike',L+2,y(ref)-4);}
 }
 
+
 $('cB').onclick=()=>{$('cv').style.display='block';$('tv').style.display='none';$('cB').className='on';$('cT').className='';drawChart();};
 $('cT').onclick=()=>{$('cv').style.display='none';$('tv').style.display='block';$('cT').className='on';$('cB').className='';
   if(!tvBuilt){tvBuilt=true;const o=document.createElement('div');o.className='tradingview-widget-container';o.style.height='100%';
@@ -303,8 +313,10 @@ $('cT').onclick=()=>{$('cv').style.display='none';$('tv').style.display='block';
     s.innerHTML=JSON.stringify({autosize:true,symbol:TV_SYM,interval:'1',timezone:'Etc/UTC',theme:'dark',style:'1',locale:'en',allow_symbol_change:false,hide_side_toolbar:true});
     o.appendChild(s);$('tv').appendChild(o);}};
 
+
 async function wake(){try{if(navigator.wakeLock)await navigator.wakeLock.request('screen');}catch(e){}}
 wake();document.addEventListener('visibilitychange',()=>{if(!document.hidden){wake();tick();}});
+
 
 let busy=false;
 async function loop(){if(busy)return;busy=true;try{await tick();}catch(e){}busy=false;}
